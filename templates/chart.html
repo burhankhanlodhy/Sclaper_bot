@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ pair }} Chart - Kraken Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background-color: #343a40;
+            padding: 1rem;
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .sidebar-brand {
+            color: #fff;
+            font-size: 1.25rem;
+            font-weight: 500;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            display: block;
+            border-bottom: 1px solid #495057;
+            padding-bottom: 1rem;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-nav .nav-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-nav .nav-link {
+            color: #adb5bd;
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-nav .nav-link:hover {
+            color: #fff;
+            background-color: #495057;
+        }
+        
+        .sidebar-nav .nav-link.active {
+            color: #fff;
+            background-color: #0d6efd;
+        }
+        
+        .sidebar-nav .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background-color: #343a40;
+            color: #fff;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+                padding-top: 4rem;
+            }
+            
+            .sidebar-toggle {
+                display: block;
+            }
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <a href="#" class="sidebar-brand">
+            <i class="fas fa-chart-line me-2"></i>
+            Kraken Paper Trading Bot
+        </a>
+        
+        <ul class="sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/pairs">
+                    <i class="fas fa-coins"></i>
+                    Pairs & Charts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/bot">
+                    <i class="fas fa-robot"></i>
+                    Bot
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/history">
+                    <i class="fas fa-history"></i>
+                    Trading History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/price-data">
+                    <i class="fas fa-database"></i>
+                    Price Data
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/settings">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </a>
+            </li>
+        </ul>
+        <div class="position-absolute bottom-0 start-0 end-0 p-3">
+            <small class="text-muted d-block mb-1">Connection</small>
+            <span class="badge bg-warning w-100 text-start" id="connectionStatus">
+                <i class="fas fa-circle"></i> Connecting...
+            </span>
+        </div>
+    </nav>
+
+    <!-- Sidebar Toggle Button (Mobile) -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-chart-area me-2"></i>{{ pair }} Chart Analysis</h1>
+                    <p class="mb-0 opacity-75">Real-time price analysis and technical indicators</p>
+                </div>
+            </div>
+        </div>
+        <!-- Chart Controls -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <h5 class="mb-0 me-3" id="pairTitle">{{ pair }}</h5>
+                                    <span class="badge bg-primary me-2" id="currentPrice">Loading...</span>
+                                    <span class="badge" id="priceChange">-</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="timeframe" id="tf1h" value="1h" checked>
+                                    <label class="btn btn-outline-primary btn-sm" for="tf1h">1H</label>
+                                    
+                                    <input type="radio" class="btn-check" name="timeframe" id="tf4h" value="4h">
+                                    <label class="btn btn-outline-primary btn-sm" for="tf4h">4H</label>
+                                    
+                                    <input type="radio" class="btn-check" name="timeframe" id="tf1d" value="1d">
+                                    <label class="btn btn-outline-primary btn-sm" for="tf1d">1D</label>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm ms-2" id="refreshBtn">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chart -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>Price Chart with Technical Indicators
+                        </h6>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                            <label class="form-check-label" for="autoRefresh">
+                                Auto Refresh (30s)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 500px;">
+                            <canvas id="priceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Indicators Info -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Moving Averages</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h6 class="text-primary" id="sma5Value">-</h6>
+                                <small class="text-muted">SMA 5</small>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="text-info" id="sma20Value">-</h6>
+                                <small class="text-muted">SMA 20</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="text-center">
+                            <span id="maSignal" class="badge bg-secondary">Calculating...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-band-aid me-2"></i>Bollinger Bands</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Upper:</small>
+                            <span id="bollingerUpper">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Middle:</small>
+                            <span id="bollingerMiddle">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Lower:</small>
+                            <span id="bollingerLower">-</span>
+                        </div>
+                        <hr>
+                        <div class="text-center">
+                            <span id="bbSignal" class="badge bg-secondary">Calculating...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Market Info</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Last Update:</small>
+                            <span id="lastUpdate">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Data Points:</small>
+                            <span id="dataPoints">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Price Data -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-table me-2"></i>Recent Price Data</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Price</th>
+                                        <th>Bid</th>
+                                        <th>Ask</th>
+                                        <th>Volume</th>
+                                        <th>SMA 5</th>
+                                        <th>SMA 20</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="priceDataTable">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">Loading price data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/connection.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+        
+        // Pass the pair name to JavaScript
+        window.CURRENT_PAIR = "{{ pair }}";
+    </script>
+    <script src="/static/chart.js"></script>
+</body>
+</html>

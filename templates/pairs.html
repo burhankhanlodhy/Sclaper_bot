@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pairs & Charts - Kraken Paper Trading Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 280px; background-color: #343a40; padding: 1rem; z-index: 1000; transition: transform 0.3s ease-in-out; }
+        .sidebar-brand { color: #fff; font-size: 1.25rem; font-weight: 500; text-decoration: none; margin-bottom: 2rem; display: block; border-bottom: 1px solid #495057; padding-bottom: 1rem; }
+        .sidebar-nav { list-style: none; padding: 0; margin: 0; }
+        .sidebar-nav .nav-item { margin-bottom: 0.5rem; }
+        .sidebar-nav .nav-link { color: #adb5bd; text-decoration: none; padding: 0.75rem 1rem; border-radius: 0.375rem; display: flex; align-items: center; transition: all 0.3s ease; }
+        .sidebar-nav .nav-link:hover { color: #fff; background-color: #495057; }
+        .sidebar-nav .nav-link.active { color: #fff; background-color: #0d6efd; }
+        .sidebar-nav .nav-link i { margin-right: 0.5rem; width: 20px; }
+        .main-content { margin-left: 280px; padding: 2rem; min-height: 100vh; }
+        .sidebar-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background-color: #343a40; color: #fff; border: none; padding: 0.5rem; border-radius: 0.375rem; }
+        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.show { transform: translateX(0); } .main-content { margin-left: 0; padding-top: 4rem; } .sidebar-toggle { display: block; } }
+        .page-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <a href="#" class="sidebar-brand">
+            <i class="fas fa-chart-line me-2"></i>
+            Kraken Paper Trading Bot
+        </a>
+    <ul class="sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/pairs">
+                    <i class="fas fa-coins"></i>
+                    Pairs & Charts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/bot">
+                    <i class="fas fa-robot"></i>
+                    Bot
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/history">
+                    <i class="fas fa-history"></i>
+                    Trading History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/price-data">
+                    <i class="fas fa-database"></i>
+                    Price Data
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/settings">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </a>
+            </li>
+        </ul>
+        <div class="position-absolute bottom-0 start-0 end-0 p-3">
+            <small class="text-muted d-block mb-1">Connection</small>
+            <span class="badge bg-warning w-100 text-start" id="connectionStatus">
+                <i class="fas fa-circle"></i> Connecting...
+            </span>
+        </div>
+    </nav>
+
+    <!-- Sidebar Toggle Button (Mobile) -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-coins me-2"></i>Pairs & Charts</h1>
+                    <p class="mb-0 opacity-75">Search pairs, view top markets, and open charts</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-search me-2"></i>Search Trading Pairs</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" id="searchInput" class="form-control" placeholder="Search pairs (e.g., BTC, ETH, ADA...)">
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-md-start text-end">
+                                <button class="btn btn-primary" id="searchBtn">
+                                    <i class="fas fa-search me-2"></i>Search
+                                </button>
+                                <button class="btn btn-secondary" id="clearBtn">
+                                    <i class="fas fa-times me-2"></i>Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 10 Pairs Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-trophy me-2"></i>Top 10 Trading Pairs by Volume</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Symbol</th>
+                                        <th>Base Currency</th>
+                                        <th>Latest Price</th>
+                                        <th>24h Volume</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topPairsTable">
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            Loading top pairs...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Results Section -->
+        <div class="row" id="searchResultsSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-list me-2"></i>Search Results</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Base Currency</th>
+                                        <th>Latest Price</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="searchResultsTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Pairs Section (initially hidden) -->
+        <div class="row" id="allPairsSection">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="fas fa-coins me-2"></i>All USD Trading Pairs</h6>
+                        <button class="btn btn-sm btn-outline-primary" id="loadAllPairsBtn">
+                            <i class="fas fa-eye me-2"></i>Show All Pairs
+                        </button>
+                    </div>
+                    <div class="card-body" id="allPairsBody" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Base</th>
+                                        <th>Latest Price</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allPairsTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Modal -->
+    <div class="modal fade" id="quickChartModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalPairTitle">
+                        <i class="fas fa-chart-area me-2"></i>Quick Chart
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="quickChartContainer" style="height: 400px;">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading chart...</span>
+                            </div>
+                            <p class="mt-2">Loading chart data...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="openFullChartBtn">
+                        <i class="fas fa-external-link-alt me-2"></i>Open Full Chart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        if (sidebarToggle && sidebar) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+            });
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth <= 768) {
+                    if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                }
+            });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/connection.js"></script>
+    <script src="/static/pairs.js"></script>
+</body>
+</html>

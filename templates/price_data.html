@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Data - Kraken Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background-color: #343a40;
+            padding: 1rem;
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .sidebar-brand {
+            color: #fff;
+            font-size: 1.25rem;
+            font-weight: 500;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            display: block;
+            border-bottom: 1px solid #495057;
+            padding-bottom: 1rem;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-nav .nav-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-nav .nav-link {
+            color: #adb5bd;
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-nav .nav-link:hover {
+            color: #fff;
+            background-color: #495057;
+        }
+        
+        .sidebar-nav .nav-link.active {
+            color: #fff;
+            background-color: #0d6efd;
+        }
+        
+        .sidebar-nav .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background-color: #343a40;
+            color: #fff;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+                padding-top: 4rem;
+            }
+            
+            .sidebar-toggle {
+                display: block;
+            }
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .status-badge {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1001;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <a href="#" class="sidebar-brand">
+            <i class="fas fa-chart-line me-2"></i>
+            Kraken Paper Trading Bot
+        </a>
+        
+    <ul class="sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/pairs">
+                    <i class="fas fa-coins"></i>
+                    Pairs & Charts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/bot">
+                    <i class="fas fa-robot"></i>
+                    Bot
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/history">
+                    <i class="fas fa-history"></i>
+                    Trading History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/price-data">
+                    <i class="fas fa-database"></i>
+                    Price Data
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/settings">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </a>
+            </li>
+        </ul>
+        <div class="position-absolute bottom-0 start-0 end-0 p-3">
+            <small class="text-muted d-block mb-1">Connection</small>
+            <span class="badge bg-warning w-100 text-start" id="connectionStatus">
+                <i class="fas fa-circle"></i> Connecting...
+            </span>
+        </div>
+    </nav>
+
+    <!-- Sidebar Toggle Button (Mobile) -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-database me-2"></i>Price Data Analytics</h1>
+                    <p class="mb-0 opacity-75">Monitor and analyze cryptocurrency price data from Kraken</p>
+                </div>
+            </div>
+        </div>
+        <!-- Price Data Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary mb-1" id="totalRecords">-</h2>
+                        <p class="card-text text-muted mb-0">
+                            <i class="fas fa-database me-2"></i>Total Records
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h2 class="card-title text-success mb-1" id="totalSymbols">-</h2>
+                        <p class="card-text text-muted mb-0">
+                            <i class="fas fa-coins me-2"></i>Active Symbols
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h2 class="card-title text-info mb-1" id="latestUpdate">-</h2>
+                        <p class="card-text text-muted mb-0">
+                            <i class="fas fa-clock me-2"></i>Latest Update
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h2 class="card-title text-warning mb-1" id="dataFrequency">-</h2>
+                        <p class="card-text text-muted mb-0">
+                            <i class="fas fa-sync me-2"></i>Avg. Update Freq.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <select class="form-select" id="symbolFilter">
+                                        <option value="">All Symbols</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-list"></i>
+                                    </span>
+                                    <select class="form-select" id="limitFilter">
+                                        <option value="100">100 Records</option>
+                                        <option value="250">250 Records</option>
+                                        <option value="500">500 Records</option>
+                                        <option value="1000">1000 Records</option>
+                                        <option value="5000">5000 Records</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <button class="btn btn-outline-primary" id="refreshBtn">
+                                        <i class="fas fa-sync-alt me-1"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-outline-success" id="exportBtn">
+                                        <i class="fas fa-download me-1"></i> Export CSV
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                                    <label class="form-check-label" for="autoRefresh">
+                                        Auto Refresh
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Data Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-table me-2"></i>Real-time Price Data
+                        </h6>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-secondary me-2" id="recordsShown">0 records</span>
+                            <div class="spinner-border spinner-border-sm text-primary d-none" id="loadingSpinner"></div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th><i class="fas fa-hashtag me-1"></i>ID</th>
+                                        <th><i class="fas fa-coins me-1"></i>Symbol</th>
+                                        <th><i class="fas fa-dollar-sign me-1"></i>Price</th>
+                                        <th><i class="fas fa-chart-line me-1"></i>Bid</th>
+                                        <th><i class="fas fa-chart-line me-1"></i>Ask</th>
+                                        <th><i class="fas fa-calculator me-1"></i>Spread</th>
+                                        <th><i class="fas fa-volume-up me-1"></i>Volume</th>
+                                        <th><i class="fas fa-clock me-1"></i>Timestamp</th>
+                                        <th><i class="fas fa-tools me-1"></i>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="priceDataTable">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4">
+                                            <div class="spinner-border text-primary me-2"></div>
+                                            Loading price data...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Data updates in real-time via WebSocket connection
+                                </small>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <nav aria-label="Price data pagination">
+                                    <ul class="pagination pagination-sm mb-0" id="pagination">
+                                        <!-- Pagination will be generated by JavaScript -->
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+    </script>
+    <script src="/static/connection.js"></script>
+    <script src="/static/price_data.js"></script>
+</body>
+</html>

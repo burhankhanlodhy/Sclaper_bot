@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading History - Kraken Paper Trading Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background-color: #343a40;
+            padding: 1rem;
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .sidebar-brand {
+            color: #fff;
+            font-size: 1.25rem;
+            font-weight: 500;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            display: block;
+            border-bottom: 1px solid #495057;
+            padding-bottom: 1rem;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-nav .nav-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-nav .nav-link {
+            color: #adb5bd;
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-nav .nav-link:hover {
+            color: #fff;
+            background-color: #495057;
+        }
+        
+        .sidebar-nav .nav-link.active {
+            color: #fff;
+            background-color: #0d6efd;
+        }
+        
+        .sidebar-nav .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background-color: #343a40;
+            color: #fff;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+                padding-top: 4rem;
+            }
+            
+            .sidebar-toggle {
+                display: block;
+            }
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .status-badge {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1001;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <a href="#" class="sidebar-brand">
+            <i class="fas fa-chart-line me-2"></i>
+            Kraken Paper Trading Bot
+        </a>
+        
+        <ul class="sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/pairs">
+                    <i class="fas fa-coins"></i>
+                    Pairs & Charts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/history">
+                    <i class="fas fa-history"></i>
+                    Trading History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/price-data">
+                    <i class="fas fa-database"></i>
+                    Price Data
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Sidebar Toggle Button (Mobile) -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Status Badge -->
+    <span class="badge bg-secondary status-badge" id="connectionStatus">
+        <i class="fas fa-circle"></i> Connecting...
+    </span>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-history me-2"></i>Trading History</h1>
+                    <p class="mb-0 opacity-75">View and analyze your trading performance</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-light active" id="allTradesBtn">
+                        All Trades
+                    </button>
+                    <button type="button" class="btn btn-outline-light" id="closedTradesBtn">
+                        Closed Trades
+                    </button>
+                    <button type="button" class="btn btn-outline-light" id="openTradesBtn">
+                        Open Trades
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Trades</h6>
+                                <h4 id="totalTradesCount">0</h4>
+                            </div>
+                            <i class="fas fa-exchange-alt fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Winning Trades</h6>
+                                <h4 id="winningTradesCount">0</h4>
+                            </div>
+                            <i class="fas fa-trophy fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Losing Trades</h6>
+                                <h4 id="losingTradesCount">0</h4>
+                            </div>
+                            <i class="fas fa-times fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total P&L</h6>
+                                <h4 id="totalProfitLoss">$0.00</h4>
+                            </div>
+                            <i class="fas fa-chart-line fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Filter -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="symbolFilter" class="form-label">Filter by Symbol:</label>
+                                <input type="text" class="form-control" id="symbolFilter" placeholder="e.g., BTC/USD">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="statusFilter" class="form-label">Filter by Status:</label>
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="OPEN">Open</option>
+                                    <option value="CLOSED">Closed</option>
+                                    <option value="STOPPED">Stopped</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="tradeTypeFilter" class="form-label">Filter by Type:</label>
+                                <select class="form-select" id="tradeTypeFilter">
+                                    <option value="">All Types</option>
+                                    <option value="BUY">Buy</option>
+                                    <option value="SELL">Sell</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" id="clearFilters">
+                                    <i class="fas fa-times me-2"></i>Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade History Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="fas fa-table me-2"></i>Trade History</h6>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm me-2" id="exportBtn">
+                                <i class="fas fa-download me-2"></i>Export CSV
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" id="refreshBtn">
+                                <i class="fas fa-sync me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-hashtag me-1"></i>ID</th>
+                                        <th><i class="fas fa-coins me-1"></i>Symbol</th>
+                                        <th><i class="fas fa-arrow-up me-1"></i>Type</th>
+                                        <th><i class="fas fa-chart-bar me-1"></i>Quantity</th>
+                                        <th><i class="fas fa-dollar-sign me-1"></i>Entry Price</th>
+                                        <th><i class="fas fa-dollar-sign me-1"></i>Exit Price</th>
+                                        <th><i class="fas fa-money-bill me-1"></i>Amount</th>
+                                        <th><i class="fas fa-percentage me-1"></i>Fees</th>
+                                        <th><i class="fas fa-chart-line me-1"></i>P&L</th>
+                                        <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                                        <th><i class="fas fa-clock me-1"></i>Entry Time</th>
+                                        <th><i class="fas fa-clock me-1"></i>Exit Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTable">
+                                    <tr>
+                                        <td colspan="12" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>Loading trade history...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <nav aria-label="Trade history pagination" class="mt-3">
+                            <ul class="pagination justify-content-center" id="pagination">
+                                <!-- Pagination will be generated by JavaScript -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+    </script>
+    <script src="/static/history.js"></script>
+</body>
+</html>
